@@ -15,21 +15,21 @@ push: null
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
 - prefect.deployments.steps.git_clone:
-    repository: git@github.com:sfc-gh-jkang/e2e-flow.git
+    repository: https://github.com/sfc-gh-jkang/e2e-flow.git
     branch: main
     access_token: null
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
-- name: null
-  version: null
-  tags: []
-  description: null
-  schedule: {}
-  flow_name: null
-  entrypoint: null
-  parameters: {}
+- name: my-test-flow-deployment
+  version: main
+  tags: [test]
+  description: "A test flow"
+  schedule: 
+    cron: "0 0 * * *"
+  flow_name: my_flow
+  entrypoint: prefect_flows.prefect_test:my_flow
+  parameters:
+    name: John
   work_pool:
-    name: null
-    work_queue_name: null
-    job_variables: {}
+    name: google-vm
