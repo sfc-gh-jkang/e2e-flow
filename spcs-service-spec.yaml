@@ -1,0 +1,29 @@
+spec:
+  containers:
+  - name: e2e-flow-container
+    image: /e2e_flow_db/image_schema/image_repo/e2e-flow:latest
+    env:
+      PYTHONUNBUFFERED: "1"
+      # Prefect Cloud Configuration
+      # Set these in Snowflake using ALTER SERVICE ... SET env=value
+      # PREFECT_API_URL: "https://api.prefect.cloud/api/accounts/<account-id>/workspaces/<workspace-id>"
+      # PREFECT_API_KEY: "your-prefect-api-key"
+      # PREFECT_WORK_POOL: "spcs-process"  # Optional, defaults to "spcs-process"
+    resources:
+      requests:
+        memory: 2Gi
+        cpu: 1.0
+      limits:
+        memory: 4Gi
+        cpu: 2.0
+    readinessProbe:
+      port: 8080
+      path: /
+  endpoints:
+  - name: e2e-flow-endpoint
+    port: 8080
+    public: true
+  # Network rules for Prefect Cloud connectivity
+  networkPolicyConfig:
+    allowInternetEgress: true
+
