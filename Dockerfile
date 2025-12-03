@@ -40,6 +40,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libgomp1 \
     ca-certificates \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy uv from builder
@@ -54,7 +55,9 @@ ENV VIRTUAL_ENV="/app/.venv"
 
 # Copy application code
 COPY main.py .
-COPY prefect_flows/ ./prefect_flows/
+COPY prefect_test.py .
+COPY eve_online_data/ ./eve_online_data/
+COPY crunchy_bridge_connection/ ./crunchy_bridge_connection/
 
 # Copy entrypoint script
 COPY entrypoint.sh .

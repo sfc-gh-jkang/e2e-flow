@@ -14,7 +14,7 @@ PGPASSWORD="your-password"
 PGPORT=5432  # optional, defaults to 5432
 ```
 
-2. Install dependencies (already added to pyproject.toml):
+1. Install dependencies (already added to pyproject.toml):
 
 ```bash
 uv sync

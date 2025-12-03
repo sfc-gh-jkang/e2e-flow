@@ -21,16 +21,50 @@
 #   uv run prefect deployment ls
 #
 # =============================================================================
+# GITHUB CONTAINER REGISTRY (GHCR) SETUP
+# =============================================================================
+#
+# Before deploying (to push Docker images to GHCR):
+#
+# 1. Create a Personal Access Token at: https://github.com/settings/tokens
+#    (Grant 'write:packages' and 'read:packages' scopes)
+#
+# 2. Login to GHCR:
+#    export CR_PAT=your_token_here
+#    echo $CR_PAT | docker login ghcr.io -u sfc-gh-jkang --password-stdin
+#
+# 3. Deploy (builds and pushes Docker image):
+#    uv run prefect deploy --name eve-market-etl
+#
+# To skip Docker build/push:
+#   - Use ./build-and-push-github.sh separately when needed
+#   - Or temporarily set 'build: null' and 'push: null' below
+#
+# =============================================================================
+
+# Check docker linux space by running: docker system df
 
 # Generic metadata about this project
 name: e2e-flow
-prefect-version: 3.4.25
+prefect-version: 3.6.4
 
 # build section allows you to manage and build docker images
-build: null
-
+build: 
+- prefect_docker.deployments.steps.build_docker_image:
+    id: build-image
+    requires: prefect-docker>=0.6.6
+    image_name: ghcr.io/sfc-gh-jkang/e2e-flow
+    tag: latest
+    dockerfile: Dockerfile
+    platform: linux/amd64
+  
 # push section allows you to manage if and how this project is uploaded to remote locations
-push: null
+# Requires: docker login ghcr.io -u sfc-gh-jkang --password-stdin <<< "$CR_PAT"
+push:
+- prefect_docker.deployments.steps.push_docker_image:
+    requires: prefect-docker>=0.6.6
+    image_name: "{{ build-image.image_name }}"
+    tag: "{{ build-image.tag }}"
 
 # pull section allows you to provide instructions for cloning this project in remote locations
 pull:
@@ -65,3 +99,19 @@ deployments:
   parameters: {}  # Uses default (pulls fresh data from API)
   work_pool:
     name: google-vm
+
+- name: docker-eve-market-etl
+  version: main
+  tags: [eve-online, etl, market-data, docker]
+  description: "ETL flow for EVE Online market data - runs in Docker container on google-vm-docker work pool"
+  schedule: 
+    cron: "0 7 * * *"  # Run daily at 6 AM UTC
+  flow_name: load_eve_market_data
+  entrypoint: prefect_test:load_eve_market_data
+  parameters: {}
+  work_pool:
+    name: google-vm-docker
+    job_variables:
+      image: "ghcr.io/sfc-gh-jkang/e2e-flow:latest"
+      image_pull_policy: "Always"
+      volumes: ["/var/run/docker.sock:/var/run/docker.sock"]

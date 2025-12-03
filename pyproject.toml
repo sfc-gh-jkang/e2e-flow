@@ -11,4 +11,5 @@ dependencies = [
     "python-dotenv>=1.2.1",
     "pandas>=2.3.3",
     "pandera>=0.27.0",
+    "prefect-docker>=0.6.6",
 ]

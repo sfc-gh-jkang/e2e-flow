@@ -1,5 +1,6 @@
 """Prefect flows for EVE Online market data ETL pipeline."""
 
+import subprocess
 from prefect import flow, task
 
 from eve_online_data.eve_market_pull import (
@@ -49,6 +50,76 @@ def upsert_to_postgres(df, table_name: str, schema: str, primary_keys: list[str]
     return result
 
 
+@task
+def cleanup_docker(keep_images: int = 3, keep_containers: int = 10):
+    """
+    Clean up old Docker images and containers to prevent disk bloat.
+    
+    Args:
+        keep_images: Number of recent images to keep (default: 3)
+        keep_containers: Number of recent containers to keep (default: 10)
+        
+    Note:
+        This task requires Docker socket access. For Docker work pools,
+        mount the socket in job_variables:
+            job_variables:
+              volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    """
+    def run_cmd(cmd: list[str]) -> str:
+        """Run a shell command and return output."""
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            return result.stdout.strip()
+        except Exception as e:
+            print(f"⚠️ Command failed: {' '.join(cmd)} - {e}")
+            return ""
+    
+    # Check if Docker is available
+    if not run_cmd(["docker", "--version"]):
+        print("⚠️ Docker not available - skipping cleanup")
+        return {"images_removed": 0, "containers_removed": 0}
+    
+    images_removed = 0
+    containers_removed = 0
+    
+    # Clean up old containers (keep last N)
+    print(f"🧹 Cleaning up containers (keeping last {keep_containers})...")
+    containers = run_cmd(["docker", "ps", "-aq"]).split("\n")
+    containers = [c for c in containers if c]  # Remove empty strings
+    
+    if len(containers) > keep_containers:
+        old_containers = containers[keep_containers:]
+        for container_id in old_containers:
+            run_cmd(["docker", "rm", "-f", container_id])
+            containers_removed += 1
+        print(f"  Removed {containers_removed} old containers")
+    else:
+        print(f"  Only {len(containers)} containers - no cleanup needed")
+    
+    # Clean up old images (keep last N)
+    print(f"🧹 Cleaning up images (keeping last {keep_images})...")
+    images = run_cmd(["docker", "images", "-q"]).split("\n")
+    images = [i for i in images if i]  # Remove empty strings
+    
+    if len(images) > keep_images:
+        old_images = images[keep_images:]
+        for image_id in old_images:
+            result = run_cmd(["docker", "rmi", "-f", image_id])
+            if "Deleted" in result or not result:
+                images_removed += 1
+        print(f"  Removed {images_removed} old images")
+    else:
+        print(f"  Only {len(images)} images - no cleanup needed")
+    
+    # Also prune dangling images and build cache
+    print("🧹 Pruning dangling images and build cache...")
+    run_cmd(["docker", "image", "prune", "-f"])
+    run_cmd(["docker", "builder", "prune", "-f", "--filter", "until=24h"])
+    
+    print(f"✓ Cleanup complete: {images_removed} images, {containers_removed} containers removed")
+    return {"images_removed": images_removed, "containers_removed": containers_removed}
+
+
 @flow(log_prints=True)
 def load_eve_market_data(csv_file: str | None = None):
     """
@@ -91,6 +162,9 @@ def load_eve_market_data(csv_file: str | None = None):
     print(f"  Table: {postgres_schema}.{eve_market_data_table}")
     print(f"  Inserted: {result['inserted']:,}")
     print(f"  Updated: {result['updated']:,}")
+    
+    # Step 5: Clean up old Docker images/containers (optional)
+    cleanup_docker(keep_images=3, keep_containers=10)
     
     return result
 

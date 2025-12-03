@@ -490,6 +490,7 @@ dependencies = [
     { name = "pandas" },
     { name = "pandera" },
     { name = "prefect" },
+    { name = "prefect-docker" },
     { name = "prefect-snowflake" },
     { name = "psycopg", extra = ["binary"] },
     { name = "python-dotenv" },
@@ -500,6 +501,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pandera", specifier = ">=0.27.0" },
     { name = "prefect", specifier = ">=3.6.4" },
+    { name = "prefect-docker", specifier = ">=0.6.6" },
     { name = "prefect-snowflake", specifier = ">=0.28.7" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.1" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
@@ -1437,6 +1439,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fa/c0/088198d7c7113a81d0718b11dc44142545f84b38375d5d5cd08e8ffb4ab7/prefect-3.6.4.tar.gz", hash = "sha256:8fa7aeeb0ff85ee8bc4f2f04dc1caac9fdb99d46b64c0318beaf7ae95d21e186", size = 5644569, upload-time = "2025-11-21T19:58:35.494Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6d/29/ac233c37002da25f87566b7974f0b368d81167b2784dc3af3d7c15725d2b/prefect-3.6.4-py3-none-any.whl", hash = "sha256:d9a28aaeeb6c3bd0621b88a44cdeab54651ff7c77227635720fcef0d5e6eede9", size = 6171226, upload-time = "2025-11-21T19:58:31.665Z" },
+]
+
+[[package]]
+name = "prefect-docker"
+version = "0.6.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "docker" },
+    { name = "exceptiongroup" },
+    { name = "prefect" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f0/41/f763035762da3dcf641f6d89956e351d48f76bbf72392e4095a9181c1cc9/prefect_docker-0.6.6.tar.gz", hash = "sha256:fd9a927b36d4b86ccbfd810688b186be07a0b2c99afbae5864aaec89963fa078", size = 39079, upload-time = "2025-05-28T18:06:36.136Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/65/3e/d97e83cd1d0b5d9e40a5cc41838e2b79fc210ec7b533486c5461727cf513/prefect_docker-0.6.6-py3-none-any.whl", hash = "sha256:5b9ab447bfa563cf3304e66b32113727d40fd451144ea3a199e5b6406293eb0b", size = 27518, upload-time = "2025-05-28T18:06:34.773Z" },
 ]
 
 [[package]]
