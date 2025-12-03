@@ -128,8 +128,4 @@ deployments:
     keep_images: 3
     keep_containers: 10
   work_pool:
-    name: google-vm-docker
-    job_variables:
-      image: "ghcr.io/sfc-gh-jkang/e2e-flow:latest"
-      image_pull_policy: "IfNotPresent"
-      volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
+    name: google-vm  # Run on VM directly (not in Docker) - needs Docker CLI on host
