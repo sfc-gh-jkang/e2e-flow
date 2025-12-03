@@ -83,4 +83,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Start Prefect worker using uv
 CMD ["uv", "run", "main.py"]
-
