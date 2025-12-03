@@ -8,6 +8,9 @@ End-to-end flow setup with **Prefect worker running on Snowflake SPCS** (Snowpar
 
 ## 🎯 What This Does
 
+- Pulls data from: ...
+
+
 This project runs a **Prefect worker pool inside Snowflake SPCS** that:
 
 - ✅ Connects to Prefect Cloud over HTTPS (port 443)
@@ -28,8 +31,9 @@ e2e-flow/
 ├── .dockerignore             # Docker build exclusions
 ├── spcs-service-spec.yaml    # Snowflake SPCS service specification
 ├── snowflake-setup.sql       # SQL commands for Snowflake infrastructure
-├── deploy.sh                 # Main deployment script (uses Snowflake CLI)
-├── build-and-push.sh         # Alternative deployment script
+├── deploy.sh                 # Main SPCS deployment script (uses Snowflake CLI)
+├── build-and-push-spcs.sh    # Alternative SPCS deployment script
+├── build-and-push-github.sh  # GitHub Container Registry build & push script
 ├── test-local-container.sh   # Local container testing script
 ├── setup-prefect-env.sh      # Prefect environment setup script
 ├── get-prefect-url.sh        # Get Prefect API URL helper
@@ -75,6 +79,45 @@ docker-compose up --build
 docker build --platform linux/amd64 -t e2e-flow:latest .
 docker run -p 8080:8080 e2e-flow:latest
 ```
+
+### 🐙 GitHub Container Registry
+
+Push your Docker image to GitHub Container Registry for easy sharing and deployment:
+
+**Setup (one-time):**
+
+```bash
+# 1. Create a GitHub Personal Access Token
+#    Go to: https://github.com/settings/tokens
+#    Scopes: write:packages, read:packages
+
+# 2. Export the token
+export CR_PAT=your_token_here
+
+# 3. Login to GitHub Container Registry
+echo $CR_PAT | docker login ghcr.io -u your-github-username --password-stdin
+```
+
+**Build and push:**
+
+```bash
+# Build and push to GitHub Container Registry
+./build-and-push-github.sh
+
+# Build only (don't push)
+./build-and-push-github.sh --local
+
+# Build with custom tag
+./build-and-push-github.sh --tag v1.0.0
+
+# Build without cache
+./build-and-push-github.sh --no-cache
+
+# Show help
+./build-and-push-github.sh --help
+```
+
+Your image will be available at: `ghcr.io/your-username/e2e-flow:latest`
 
 ### ☁️ Snowflake SPCS Deployment
 
@@ -241,7 +284,26 @@ Then check Prefect Cloud → **Work Pools** → **spcs-process** to see your wor
 
 ## 📋 Commands Reference
 
-### 🚀 Deployment Commands
+### 🐙 GitHub Container Registry Commands
+
+```bash
+# Build and push to GitHub Container Registry
+./build-and-push-github.sh
+
+# Build only (don't push)
+./build-and-push-github.sh --local
+
+# Build with custom tag
+./build-and-push-github.sh --tag v1.0.0
+
+# Build without cache
+./build-and-push-github.sh --no-cache
+
+# Show help
+./build-and-push-github.sh --help
+```
+
+### 🚀 Snowflake SPCS Deployment Commands
 
 ```bash
 # First deployment (creates new service + ingress URL)
@@ -312,8 +374,8 @@ snow sql -q "SHOW COMPUTE POOLS;" -c default
 
 ### 🔧 Container Features
 
-- **Base Image:** Ubuntu 22.04
-- **Python Version:** 3.11
+- **Base Image:** Python 3.13 Slim
+- **Python Version:** 3.13
 - **Package Manager:** UV (ultra-fast Python package installer)
 - **Architecture:** linux/amd64 (required for Snowflake SPCS)
 - **Port:** 8080 (configurable)
@@ -326,6 +388,29 @@ snow sql -q "SHOW COMPUTE POOLS;" -c default
 - **Reliability:** Better dependency resolution
 - **Compatibility:** Drop-in replacement for pip
 - **Efficiency:** Parallel downloads and installations
+
+### 🏗️ Multi-Stage Build Benefits
+
+The Dockerfile uses a multi-stage build approach with two stages:
+
+**Builder Stage:**
+
+- Installs build tools (gcc, g++, git)
+- Creates virtual environment with all dependencies
+- Compiles native extensions if needed
+
+**Runtime Stage:**
+
+- Only copies the compiled virtual environment
+- Minimal runtime dependencies (libgomp1, ca-certificates)
+- No build tools = smaller image size
+
+**Advantages:**
+
+- **Smaller images:** 40-60% reduction in final image size
+- **Faster deployments:** Less data to push/pull
+- **Better security:** Reduced attack surface (no compiler tools)
+- **Lower costs:** Reduced storage and transfer costs
 
 ### 🛠️ Customization
 
@@ -374,10 +459,14 @@ resources:
 
 #### Changing Python Version
 
-Edit `Dockerfile`:
+Edit the base image in both stages of the `Dockerfile`:
 
 ```dockerfile
-RUN apt-get install -y python3.12 python3.12-dev  # Use desired version
+# Stage 1: Build stage
+FROM python:3.13-slim AS builder  # Change to desired version
+
+# Stage 2: Runtime stage
+FROM python:3.13-slim  # Change to match builder version
 ```
 
 ### 📚 Additional Resources

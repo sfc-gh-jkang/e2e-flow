@@ -2,6 +2,43 @@
 
 All files have been updated to align with best practices from [cortex-cost-app-spcs](https://github.com/sfc-gh-jkang/cortex-cost-app-spcs).
 
+## 🆕 Latest Updates
+
+### Dockerfile Updated to Python 3.13 with Multi-Stage Build
+
+**Enhanced Dockerfile:**
+- **Python 3.13**: Updated from Python 3.11 to Python 3.13-slim for latest features and performance
+- **Multi-stage build**: Separates build and runtime stages for smaller final image size
+  - **Builder stage**: Installs build tools (gcc, g++, git) and creates virtual environment
+  - **Runtime stage**: Only includes runtime dependencies and compiled packages
+- **Virtual environment**: UV now creates a proper `.venv` that's copied to runtime stage
+- **Optimized dependencies**: Runtime only needs `libgomp1` and `ca-certificates`
+- **Format reference**: Based on [snowflake-cortex-agents-with-slack](https://github.com/sfc-gh-jkang/snowflake-cortex-agents-with-slack/blob/master/Dockerfile)
+
+**Benefits:**
+- Smaller final image size (no build tools in production image)
+- Faster deployments and lower storage costs
+- Better security (reduced attack surface)
+- Improved build caching
+
+### Build Scripts Reorganization
+
+**New:**
+- **`build-and-push-github.sh`** - GitHub Container Registry build and push script
+  - Build and push to ghcr.io (GitHub Container Registry)
+  - Support for custom tags, local builds, and no-cache builds
+  - Automatic authentication checking
+  - Helpful error messages and usage examples
+
+**Renamed:**
+- **`build-and-push-spcs.sh`** (formerly `build-and-push.sh`)
+  - Renamed to clarify it's for Snowflake SPCS deployment
+  - Functionality unchanged
+
+This separation provides clearer workflows:
+- Use `build-and-push-github.sh` for pushing to GitHub Container Registry
+- Use `build-and-push-spcs.sh` or `deploy.sh` for Snowflake SPCS deployment
+
 ## ✨ What's New
 
 ### 🆕 New Files Created
@@ -36,7 +73,7 @@ All files have been updated to align with best practices from [cortex-cost-app-s
 
 ### 📝 Updated Files
 
-1. **`build-and-push.sh`**
+1. **`build-and-push-spcs.sh`** (SPCS Deployment Script)
    - Converted to use Snowflake CLI
    - Added `--update` mode support
    - Automatic registry authentication
@@ -165,10 +202,11 @@ e2e-flow/
 ├── DEPLOYMENT_GUIDE.md         # Comprehensive deployment guide
 ├── QUICKSTART.md               # Quick reference guide
 ├── README.md                   # Main documentation
-├── build-and-push.sh           # Alternative deployment script
-├── deploy.sh                   # Main deployment script ⭐
+├── build-and-push-github.sh    # GitHub Container Registry build & push script ⭐
+├── build-and-push-spcs.sh      # Alternative SPCS deployment script
+├── deploy.sh                   # Main SPCS deployment script ⭐
 ├── docker-compose.yml          # Local development with Docker Compose
-├── Dockerfile                  # Ubuntu + UV + Python 3.11
+├── Dockerfile                  # Multi-stage build + UV + Python 3.13
 ├── main.py                     # Application entry point
 ├── pyproject.toml              # Python project configuration
 ├── snowflake-setup.sql         # Snowflake infrastructure setup

@@ -75,3 +75,5 @@ logs/
 *.bak
 *.swp
 *~
+# Ignore downloaded CSV files from GRID API
+grid_data_pulled/*.csv

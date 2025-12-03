@@ -1,6 +1,26 @@
 # Welcome to your prefect.yaml file! You can use this file for storing and managing
 # configuration for deploying your flows. We recommend committing this file to source
 # control along with your flow code.
+#
+# =============================================================================
+# DEPLOYMENT COMMANDS
+# =============================================================================
+#
+# Deploy ALL deployments:
+#   uv run prefect deploy --all
+#
+# Deploy a SPECIFIC deployment by name:
+#   uv run prefect deploy --name eve-market-etl
+#   uv run prefect deploy --name my-test-flow-deployment
+#
+# Run a deployment manually:
+#   uv run prefect deployment run 'load-eve-market-data/eve-market-etl'
+#   uv run prefect deployment run 'my-flow/my-test-flow-deployment'
+#
+# List all deployments:
+#   uv run prefect deployment ls
+#
+# =============================================================================
 
 # Generic metadata about this project
 name: e2e-flow
@@ -31,5 +51,17 @@ deployments:
   entrypoint: prefect_flows.prefect_test:my_flow
   parameters:
     name: John
+  work_pool:
+    name: google-vm
+
+- name: eve-market-etl
+  version: main
+  tags: [eve-online, etl, market-data]
+  description: "ETL flow for EVE Online market data - pulls from API, validates, and loads to Crunchy Bridge PostgreSQL"
+  schedule: 
+    cron: "0 6 * * *"  # Run daily at 6 AM UTC
+  flow_name: load_eve_market_data
+  entrypoint: prefect_test:load_eve_market_data
+  parameters: {}  # Uses default (pulls fresh data from API)
   work_pool:
     name: google-vm

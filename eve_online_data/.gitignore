@@ -1,0 +1,15 @@
+# Ignore CSV data files
+*.csv
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+
+
+
+
+
+

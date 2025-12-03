@@ -194,13 +194,3 @@ echo "   Suspend: snow sql -q \"ALTER SERVICE ${DATABASE}.${APP_SCHEMA}.${SERVIC
 echo "   Resume:  snow sql -q \"ALTER SERVICE ${DATABASE}.${APP_SCHEMA}.${SERVICE_NAME} RESUME;\" -c $SNOWFLAKE_CONNECTION"
 echo "============================================"
 
-
-
-
-
-
-
-
-
-
-
