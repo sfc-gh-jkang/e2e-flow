@@ -114,7 +114,6 @@ deployments:
     job_variables:
       image: "ghcr.io/sfc-gh-jkang/e2e-flow:latest"
       image_pull_policy: "Always"
-      volumes: ["/var/run/docker.sock:/var/run/docker.sock"]
 
 - name: docker-cleanup
   version: main

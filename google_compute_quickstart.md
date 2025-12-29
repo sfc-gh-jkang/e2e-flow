@@ -11,6 +11,7 @@
 
 # Try setting up prefect
 ```bash
+tmux ls
 tmux new-session -A -s prefect
 tmux attach -t prefect
 uv run prefect worker start --pool "google-vm"
