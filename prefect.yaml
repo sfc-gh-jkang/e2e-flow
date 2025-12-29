@@ -115,6 +115,22 @@ deployments:
       image: "ghcr.io/sfc-gh-jkang/e2e-flow:latest"
       image_pull_policy: "Always"
 
+- name: docker-sf-eve-market-etl
+  version: main
+  tags: [eve-online, etl, market-data, docker, snowflake]
+  description: "ETL flow for EVE Online market data - loads to Snowflake PostgreSQL (not Crunchy Bridge)"
+  schedule: 
+    cron: "0 8 * * *"  # Run daily at 8 AM UTC (after Crunchy ETL)
+  flow_name: load_eve_market_data
+  entrypoint: prefect_test:load_eve_market_data
+  parameters:
+    crunchy_or_snowflake: "snowflake"
+  work_pool:
+    name: google-vm-docker
+    job_variables:
+      image: "ghcr.io/sfc-gh-jkang/e2e-flow:latest"
+      image_pull_policy: "Always"
+
 - name: docker-cleanup
   version: main
   tags: [docker, cleanup, maintenance]

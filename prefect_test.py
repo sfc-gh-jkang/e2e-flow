@@ -37,30 +37,49 @@ def validate_and_load_csv(csv_file: str):
 
 
 @task
-def upsert_to_postgres(df, table_name: str, schema: str, primary_keys: list[str]):
-    """Upsert DataFrame to PostgreSQL (merge on primary keys)."""
+def upsert_to_postgres(
+    df,
+    table_name: str,
+    schema: str,
+    primary_keys: list[str],
+    crunchy_or_snowflake: str = "crunchy",
+):
+    """Upsert DataFrame to PostgreSQL (merge on primary keys).
+    
+    Args:
+        df: pandas DataFrame to upsert
+        table_name: Target table name
+        schema: Database schema
+        primary_keys: List of columns forming the composite primary key
+        crunchy_or_snowflake: Target database - "crunchy" or "snowflake"
+    """
     result = upsert_dataframe_to_table(
         df=df,
         table_name=table_name,
         primary_keys=primary_keys,
         schema=schema,
         create_table=True,  # Creates table with PK if not exists
+        crunchy_or_snowflake=crunchy_or_snowflake,
     )
     return result
 
 
 @flow(log_prints=True)
-def load_eve_market_data(csv_file: str | None = None):
+def load_eve_market_data(
+    csv_file: str | None = None,
+    crunchy_or_snowflake: str = "crunchy",
+):
     """
     ETL flow for EVE Online market data.
     
     1. Pull market data from API (or use provided CSV)
     2. Load and validate CSV with pandera
     3. Create PostgreSQL table if not exists (with primary key)
-    4. Upsert (merge) data into Crunchy Bridge PostgreSQL
+    4. Upsert (merge) data into PostgreSQL (Crunchy Bridge or Snowflake)
     
     Args:
         csv_file: Optional path to existing CSV file. If None, pulls fresh data.
+        crunchy_or_snowflake: Target database - "crunchy" (default) or "snowflake"
         
     Merge Keys:
         - region_id: The EVE region (e.g., The Forge, Domain)
@@ -80,14 +99,19 @@ def load_eve_market_data(csv_file: str | None = None):
     df = validate_and_load_csv(csv_file)
     
     # Step 3 & 4: Upsert to PostgreSQL (creates table if not exists)
+    db_name = "Snowflake" if crunchy_or_snowflake == "snowflake" else "Crunchy Bridge"
+    print(f"Target database: {db_name}")
+    
     result = upsert_to_postgres(
         df=df,
         table_name=eve_market_data_table,
         schema=postgres_schema,
         primary_keys=EVE_MARKET_PRIMARY_KEYS,
+        crunchy_or_snowflake=crunchy_or_snowflake,
     )
     
     print(f"\n✓ ETL Complete!")
+    print(f"  Database: {db_name}")
     print(f"  Table: {postgres_schema}.{eve_market_data_table}")
     print(f"  Inserted: {result['inserted']:,}")
     print(f"  Updated: {result['updated']:,}")
