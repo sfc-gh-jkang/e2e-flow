@@ -77,3 +77,36 @@ with get_connection() as conn:
 - **Efficient bulk loading**: Uses PostgreSQL COPY for fast imports
 - **SSL by default**: Secure connections to Crunchy Bridge
 - **Column name sanitization**: Handles spaces and special characters
+
+## OpenFlow CDC Replication Setup
+
+To enable OpenFlow to read changes from PostgreSQL (Crunchy or Snowflake) into Snowflake
+normal tables via Change Data Capture (CDC), you must configure replication on the source database.
+
+### Setup Steps (Run on BOTH Crunchy and Snowflake PostgreSQL)
+
+```sql
+-- 1. Create a replication user with password
+CREATE USER replication_user WITH REPLICATION PASSWORD 'your-secure-password';
+
+-- 2. Ensure the user has replication privileges
+ALTER USER replication_user WITH REPLICATION;
+
+-- 3. Set REPLICA IDENTITY FULL on tables you want to replicate
+--    This allows OpenFlow to capture UPDATE and DELETE changes (not just INSERTs)
+ALTER TABLE eve_online.eve_market_data REPLICA IDENTITY FULL;
+```
+
+### Why REPLICA IDENTITY FULL?
+
+- **DEFAULT**: Only logs primary key columns for UPDATE/DELETE - may miss changes if no PK
+- **FULL**: Logs all column values - required for proper CDC when you need complete row data
+- OpenFlow needs FULL to correctly replicate all changes to Snowflake tables
+
+### Apply to Additional Tables
+
+For each table you want to replicate:
+
+```sql
+ALTER TABLE schema_name.table_name REPLICA IDENTITY FULL;
+```

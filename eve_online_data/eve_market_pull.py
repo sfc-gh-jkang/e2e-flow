@@ -491,11 +491,10 @@ def pull_eve_market_data() -> str:
     print_log(f"   Delay after large request: {RATE_LIMIT_CONFIG['delay_after_large_request']}s")
     print()
     
-    # Optional: Get type ID names for better CSV output
-    type_id_names = None
-    if CONFIG['mode'] == 'specific' and len(CONFIG['type_ids']) <= 20:
-        type_id_names = get_type_ids()
-        print()
+    # Fetch type ID names ONCE per flow run for item name lookup
+    print_log("📋 Fetching type ID names (one-time lookup)...")
+    type_id_names = get_type_ids()
+    print()
     
     # Step 1: Get market data
     print_log("📊 STEP 1: Fetching Market Data")

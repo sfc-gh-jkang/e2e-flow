@@ -12,4 +12,5 @@ dependencies = [
     "pandas>=2.3.3",
     "pandera>=0.27.0",
     "prefect-docker>=0.6.6",
+    "pyarrow>=22.0.0",
 ]

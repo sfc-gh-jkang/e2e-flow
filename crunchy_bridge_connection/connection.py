@@ -202,7 +202,10 @@ def test_connection(
             with conn.cursor() as cur:
                 cur.execute("SELECT version()")
                 version = cur.fetchone()[0]
+                cur.execute("SELECT current_database()")
+                database_name = cur.fetchone()[0]
                 print(f"✓ Connected to {db_name} PostgreSQL")
+                print(f"  Database: {database_name}")
                 print(f"  Version: {version[:60]}...")
                 
                 # List all tables in the database

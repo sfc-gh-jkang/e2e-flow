@@ -1,6 +1,4 @@
-# E2E Flow - Prefect Worker on Snowflake SPCS
-
-End-to-end flow setup with **Prefect worker running on Snowflake SPCS** (Snowpark Container Services) using UV and Ubuntu.
+# E2E Flow - Prefect Worker on Prefect Cloud
 
 **Based on:** [cortex-cost-app-spcs](https://github.com/sfc-gh-jkang/cortex-cost-app-spcs)
 
@@ -8,19 +6,34 @@ End-to-end flow setup with **Prefect worker running on Snowflake SPCS** (Snowpar
 
 ## 🎯 What This Does
 
-- Pulls data from: ...
+**EVE Online Market Data ETL Pipeline** that:
 
+- 📊 Pulls daily market data from EVE Online ESI API
+- ✅ Validates data with Pandera schemas
+- 💾 Loads to **Crunchy Bridge PostgreSQL** OR **Snowflake PostgreSQL**
+- 🔄 Supports upsert (merge) operations with primary keys
+- 🐳 Runs in Docker containers on Google Cloud VM
 
-This project runs a **Prefect worker pool inside Snowflake SPCS** that:
+This project runs **Prefect workers on a Google VM** with two work pools:
+
+- **`google-vm`** - Process-based worker for direct execution
+- **`google-vm-docker`** - Docker-based worker for containerized flows
+
+Features:
 
 - ✅ Connects to Prefect Cloud over HTTPS (port 443)
 - ✅ Executes flow runs from your Prefect workspace
-- ✅ Runs within your Snowflake account's security boundary
+- ✅ Dual database support: Crunchy Bridge + Snowflake PostgreSQL
 - ✅ Uses UV for ultra-fast Python package management
 
-## ✅ Step 1: Setup a Snowflake SPCS UV Ubuntu container with Docker
+## ✅ Infrastructure Setup
 
-This project includes a complete setup for running a Prefect worker on Snowflake SPCS with UV (ultra-fast Python package installer).
+This project supports multiple deployment methods:
+
+1. **Google VM with Docker** (current active setup) - See `google_compute_quickstart.md`
+2. **Snowflake SPCS** - Container services within Snowflake
+
+Both use UV (ultra-fast Python package installer) and Docker containers.
 
 ### 📁 Project Structure
 
@@ -28,28 +41,108 @@ This project includes a complete setup for running a Prefect worker on Snowflake
 e2e-flow/
 ├── Dockerfile                 # Ubuntu-based container with UV
 ├── docker-compose.yml         # Local development setup
-├── .dockerignore             # Docker build exclusions
-├── spcs-service-spec.yaml    # Snowflake SPCS service specification
-├── snowflake-setup.sql       # SQL commands for Snowflake infrastructure
-├── deploy.sh                 # Main SPCS deployment script (uses Snowflake CLI)
-├── build-and-push-spcs.sh    # Alternative SPCS deployment script
-├── build-and-push-github.sh  # GitHub Container Registry build & push script
-├── test-local-container.sh   # Local container testing script
-├── setup-prefect-env.sh      # Prefect environment setup script
-├── get-prefect-url.sh        # Get Prefect API URL helper
-├── pyproject.toml            # Python project configuration (with Prefect)
+├── prefect.yaml              # Prefect deployments configuration
+├── prefect_test.py           # EVE Online ETL flow and tasks
+├── docker_cleanup.py         # Docker cleanup maintenance flow
 ├── main.py                   # Prefect worker entry point
-└── docs/                     # Documentation
-    ├── QUICKSTART.md         # Quick start guide
-    ├── DEPLOYMENT_GUIDE.md   # Detailed deployment guide
-    ├── PREFECT_SETUP.md      # Prefect configuration
-    ├── CREATE_WORK_POOL.md   # Work pool creation guide
-    ├── PREFECT_AUTH.md       # Authentication methods
-    ├── GET_PREFECT_URL.md    # Getting API URL guide
-    └── CHANGES.md            # Changelog
+├── pyproject.toml            # Python project configuration
+├── google_compute_quickstart.md  # Google VM setup guide
+│
+├── crunchy_bridge_connection/    # PostgreSQL utilities
+│   ├── connection.py         # Database connection (Crunchy + Snowflake)
+│   ├── csv_loader.py         # CSV loading, upsert, and CLI tools
+│   └── README.md             # Module documentation
+│
+├── eve_online_data/          # EVE Online market data module
+│   ├── __init__.py           # Data fetching and validation
+│   └── *.csv                 # Downloaded market data files
+│
+├── docs/                     # Documentation
+│   ├── QUICKSTART.md         # Quick start guide
+│   ├── DEPLOYMENT_GUIDE.md   # Detailed deployment guide
+│   └── ...                   # Additional guides
+│
+└── scripts/                  # Deployment scripts
+    ├── deploy.sh             # SPCS deployment script
+    ├── build-and-push-github.sh  # GitHub Container Registry script
+    └── test-local-container.sh   # Local testing script
 ```
 
-### 🚀 Quick Start - Local Testing
+## 📊 EVE Online ETL Pipeline
+
+### Prefect Deployments
+
+The project includes 4 Prefect deployments configured in `prefect.yaml`:
+
+| Deployment | Target DB | Work Pool | Schedule |
+|------------|-----------|-----------|----------|
+| `eve-market-etl` | Crunchy | `google-vm` | 6 AM UTC |
+| `docker-eve-market-etl` | Crunchy | `google-vm-docker` | 7 AM UTC |
+| `docker-sf-eve-market-etl` | Snowflake | `google-vm-docker` | 8 AM UTC |
+| `docker-cleanup` | N/A | `google-vm` | 8 AM UTC |
+
+### Running the ETL Locally
+
+```bash
+# Run ETL to Crunchy Bridge (default)
+uv run python -c "from prefect_test import load_eve_market_data; load_eve_market_data()"
+
+# Run ETL to Snowflake PostgreSQL
+uv run python -c "from prefect_test import load_eve_market_data; load_eve_market_data(crunchy_or_snowflake='snowflake')"
+```
+
+### Testing Database Connections
+
+```bash
+# Test Crunchy Bridge connection
+uv run python -c "from crunchy_bridge_connection.connection import test_connection; test_connection()"
+
+# Test Snowflake PostgreSQL connection
+uv run python -c "from crunchy_bridge_connection.connection import test_connection; test_connection(crunchy_or_snowflake='snowflake')"
+```
+
+### CSV Loader CLI
+
+```bash
+# Load CSV to table (uses COPY - fast bulk load)
+uv run python -m crunchy_bridge_connection.csv_loader load <csv_file> <table_name> --schema eve_online
+
+# Upsert CSV to table (uses INSERT ON CONFLICT - merges data)
+uv run python -m crunchy_bridge_connection.csv_loader upsert <csv_file> <table_name> \
+  --primary-keys region_id,typeid,last_data --schema eve_online
+
+# Pull table to CSV
+uv run python -m crunchy_bridge_connection.csv_loader pull eve_online.eve_market_data
+
+# Add --snowflake flag to target Snowflake instead of Crunchy
+uv run python -m crunchy_bridge_connection.csv_loader pull eve_online.eve_market_data --snowflake
+```
+
+### Environment Variables
+
+Create a `.env` file with:
+
+```bash
+# Crunchy Bridge PostgreSQL
+PGHOST="p.EXAMPLE.db.postgresbridge.com"
+PGDATABASE="postgres"
+PGUSER="application"
+PGPASSWORD="your-password"
+
+# Snowflake PostgreSQL (wire protocol)
+SNOWFLAKE_POSTGRES_HOST="your-account.snowflakecomputing.com"
+SNOWFLAKE_POSTGRES_USER="your-user"
+SNOWFLAKE_POSTGRES_PASSWORD="your-password"
+SNOWFLAKE_POSTGRES_DATABASE="your-database"
+
+# Prefect Cloud
+PREFECT_API_URL="https://api.prefect.cloud/api/accounts/.../workspaces/..."
+PREFECT_API_KEY="pnu_..."
+```
+
+---
+
+## 🚀 Quick Start - Local Testing
 
 **Option 1: Using the test script (recommended)**
 
@@ -214,17 +307,28 @@ The deploy script will:
 
 #### Step 5: Create Work Pool in Prefect Cloud
 
-Before configuring the service, create a work pool:
+Before configuring the service, create a work pool. Choose based on your deployment method:
 
-1. Log into [Prefect Cloud](https://app.prefect.cloud)
-2. Go to **Work Pools** → **Create Work Pool**
-3. Name: `spcs-process`, Type: **Process**
+**For Snowflake SPCS deployment:**
 
-Or via CLI:
+- Name: `spcs-process`, Type: **Process**
+
+**For Google VM deployment (current active setup):**
+
+- Name: `google-vm`, Type: **Process** (direct execution)
+- Name: `google-vm-docker`, Type: **Docker** (containerized flows)
+
+Via CLI:
 
 ```bash
 uv run prefect cloud login -k pnu_your_key
+
+# For SPCS
 uv run prefect work-pool create spcs-process --type process
+
+# For Google VM
+uv run prefect work-pool create google-vm --type process
+uv run prefect work-pool create google-vm-docker --type docker
 ```
 
 📖 **Detailed guide:** See [CREATE_WORK_POOL.md](docs/CREATE_WORK_POOL.md)
@@ -612,13 +716,18 @@ snow sql -q "SHOW IMAGES IN IMAGE REPOSITORY E2E_FLOW_DB.IMAGE_SCHEMA.IMAGE_REPO
 
 - [x] Configure Prefect integration ✅
 - [x] Enable outbound HTTPS for Prefect Cloud ✅
-- [ ] Create Prefect flows and deployments
+- [x] Create Prefect flows and deployments ✅ (4 deployments in prefect.yaml)
+- [x] EVE Online market data ETL pipeline ✅
+- [x] Dual database support (Crunchy + Snowflake) ✅
+- [x] CSV loader with upsert support ✅
+- [x] Docker-based deployments ✅
 - [ ] Add health check endpoint
 - [ ] Implement monitoring and alerting
 - [ ] Set up CI/CD pipeline
-- [ ] Add environment-specific configurations
-- [ ] Implement proper logging and error handling
+- [ ] Add OpenFlow CDC replication to Snowflake tables
 
 ---
 
-**🎉 You now have a Prefect worker running on Snowflake SPCS!** The worker connects to Prefect Cloud and can execute your flow runs within your Snowflake account.
+**🎉 You now have a Prefect worker running!** The worker connects to Prefect Cloud and executes your flow runs.
+
+**Current active setup:** Google VM with Docker-based ETL flows loading EVE Online market data to Crunchy Bridge and Snowflake PostgreSQL databases.
