@@ -6,16 +6,23 @@
 # DEPLOYMENT COMMANDS
 # =============================================================================
 #
-# Deploy ALL deployments:
+# Deploy ALL deployments (rebuilds Docker image):
 #   uv run prefect deploy --all
+#
+# Deploy WITHOUT rebuilding Docker image (faster, use when only code changed):
+#   uv run prefect deploy --all --no-build
+#
+#   NOTE: Since we use git_clone in the 'pull' section, code is pulled from git
+#   at runtime. Only rebuild the Docker image when dependencies (pyproject.toml)
+#   change. For code-only changes, just commit, push, and deploy with --no-build.
 #
 # Deploy a SPECIFIC deployment by name:
 #   uv run prefect deploy --name eve-market-etl
-#   uv run prefect deploy --name my-test-flow-deployment
+#   uv run prefect deploy --name replication-slot-monitor-snowflake --no-build
 #
 # Run a deployment manually:
 #   uv run prefect deployment run 'load-eve-market-data/eve-market-etl'
-#   uv run prefect deployment run 'my-flow/my-test-flow-deployment'
+#   uv run prefect deployment run 'monitor-replication-slots/replication-slot-monitor-snowflake'
 #
 # List all deployments:
 #   uv run prefect deployment ls
@@ -142,7 +149,7 @@ deployments:
   tags: [monitoring, postgresql, replication, alerts, snowflake]
   description: "Monitor Snowflake PostgreSQL replication slots for growing lag or disconnected consumers"
   schedule: 
-    cron: "*/15 * * * *"  # Run every 15 minutes
+    cron: "0 5 * * *"  # Run daily at midnight EST (05:00 UTC)
   flow_name: monitor_replication_slots
   entrypoint: replication_slot_monitor:monitor_replication_slots
   parameters:
@@ -163,7 +170,7 @@ deployments:
   tags: [monitoring, postgresql, replication, alerts, crunchy]
   description: "Monitor Crunchy Bridge PostgreSQL replication slots for growing lag or disconnected consumers"
   schedule: 
-    cron: "*/15 * * * *"  # Run every 15 minutes
+    cron: "0 5 * * *"  # Run daily at midnight EST (05:00 UTC)
   flow_name: monitor_replication_slots
   entrypoint: replication_slot_monitor:monitor_replication_slots
   parameters:

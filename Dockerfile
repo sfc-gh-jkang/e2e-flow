@@ -53,13 +53,26 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV="/app/.venv"
 
-# Copy application code
-COPY main.py .
-COPY prefect_test.py .
-COPY eve_online_data/ ./eve_online_data/
-COPY crunchy_bridge_connection/ ./crunchy_bridge_connection/
+# =============================================================================
+# APPLICATION CODE - OPTIONAL FOR PREFECT DEPLOYMENTS
+# =============================================================================
+# These COPY commands are NOT needed for Prefect deployments because we use
+# git_clone in prefect.yaml's 'pull' section - code is pulled from git at runtime.
+#
+# Keep these ONLY if you want to:
+#   1. Run the container directly (without Prefect): docker run <image> python main.py
+#   2. Test the container locally before pushing
+#
+# To speed up builds, you can remove/comment these lines since the Docker image
+# only needs dependencies (pyproject.toml), not application code.
+# =============================================================================
 
-# Copy entrypoint script
+# COPY main.py .
+# COPY prefect_test.py .
+# COPY eve_online_data/ ./eve_online_data/
+# COPY crunchy_bridge_connection/ ./crunchy_bridge_connection/
+
+# Copy entrypoint script (keep this - used for container startup)
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
@@ -81,5 +94,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Use entrypoint script for any pre-startup commands
 # ENTRYPOINT ["./entrypoint.sh"]
 
-# Start Prefect worker using uv
+# Default command (not used by Prefect - deployments specify their own entrypoints)
+# This is only used if you run the container directly: docker run <image>
 CMD ["uv", "run", "main.py"]
