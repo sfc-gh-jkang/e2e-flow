@@ -77,3 +77,7 @@ logs/
 *~
 # Ignore downloaded CSV files from GRID API
 grid_data_pulled/*.csv
+
+# Ignore EVE Online data files (CSVs, parquets, etc.)
+eve_online_data/*.csv
+eve_online_data/*.parquet
