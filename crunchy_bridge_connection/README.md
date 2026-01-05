@@ -110,3 +110,47 @@ For each table you want to replicate:
 ```sql
 ALTER TABLE schema_name.table_name REPLICA IDENTITY FULL;
 ```
+
+### Create a Publication
+
+OpenFlow Connector for PostgreSQL requires a publication to be created and configured
+before replication starts. You can create it for all tables, a subset of tables, or
+specific tables with specified columns only.
+
+**Step 1: Create the publication**
+
+For PostgreSQL 13 and later:
+
+```sql
+CREATE PUBLICATION eve_market_publication WITH (publish_via_partition_root = true);
+```
+
+> The `publish_via_partition_root` option is needed for correct replication of partitioned tables.
+
+For PostgreSQL versions earlier than 13:
+
+```sql
+CREATE PUBLICATION eve_market_publication;
+```
+
+**Step 2: Add tables to the publication**
+
+```sql
+-- Add specific tables
+ALTER PUBLICATION eve_market_publication ADD TABLE eve_online.eve_market_data;
+
+-- Or add multiple tables
+ALTER PUBLICATION eve_market_publication ADD TABLE schema.table1, schema.table2;
+```
+
+For partitioned tables, just add the root partition table to the publication.
+
+**Verify the publication:**
+
+```sql
+-- List all publications
+SELECT * FROM pg_publication;
+
+-- List tables in a publication
+SELECT * FROM pg_publication_tables WHERE pubname = 'eve_market_publication';
+```

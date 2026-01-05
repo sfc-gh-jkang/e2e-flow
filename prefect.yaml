@@ -75,25 +75,13 @@ pull:
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
-- name: my-test-flow-deployment
-  version: main
-  tags: [test]
-  description: "A test flow"
-  schedule: 
-    cron: "0 0 * * *"
-  flow_name: my_flow
-  entrypoint: prefect_flows.prefect_test:my_flow
-  parameters:
-    name: John
-  work_pool:
-    name: google-vm
 
 - name: eve-market-etl
   version: main
   tags: [eve-online, etl, market-data]
   description: "ETL flow for EVE Online market data - pulls from API, validates, and loads to Crunchy Bridge PostgreSQL"
   schedule: 
-    cron: "0 6 * * *"  # Run daily at 6 AM UTC
+    cron: "0 15 * * *"  # Run daily at 1500 UTC
   flow_name: load_eve_market_data
   entrypoint: prefect_test:load_eve_market_data
   parameters: {}  # Uses default (pulls fresh data from API)
@@ -105,7 +93,7 @@ deployments:
   tags: [eve-online, etl, market-data, docker]
   description: "ETL flow for EVE Online market data - runs in Docker container on google-vm-docker work pool"
   schedule: 
-    cron: "0 7 * * *"  # Run daily at 7 AM UTC
+    cron: "5 14 * * *"  # Run daily at 1405 UTC
   flow_name: load_eve_market_data
   entrypoint: prefect_test:load_eve_market_data
   parameters: {}
@@ -120,7 +108,7 @@ deployments:
   tags: [eve-online, etl, market-data, docker, snowflake]
   description: "ETL flow for EVE Online market data - loads to Snowflake PostgreSQL (not Crunchy Bridge)"
   schedule: 
-    cron: "0 8 * * *"  # Run daily at 8 AM UTC (after Crunchy ETL)
+    cron: "0 14 * * *"  # Run daily at 1400 UTC (after Crunchy ETL)
   flow_name: load_eve_market_data
   entrypoint: prefect_test:load_eve_market_data
   parameters:
@@ -136,7 +124,7 @@ deployments:
   tags: [docker, cleanup, maintenance]
   description: "Clean up old Docker images and containers to prevent disk bloat"
   schedule: 
-    cron: "0 8 * * *"  # Run daily at 8 AM UTC (after ETL flows)
+    cron: "15 14 * * *"  # Run daily at 1415 UTC (after ETL flows)
   flow_name: docker_cleanup
   entrypoint: docker_cleanup:docker_cleanup
   parameters:
@@ -144,3 +132,49 @@ deployments:
     keep_containers: 10
   work_pool:
     name: google-vm  # Run on VM directly (not in Docker) - needs Docker CLI on host
+
+# =============================================================================
+# MONITORING FLOWS
+# =============================================================================
+
+- name: replication-slot-monitor-snowflake
+  version: main
+  tags: [monitoring, postgresql, replication, alerts, snowflake]
+  description: "Monitor Snowflake PostgreSQL replication slots for growing lag or disconnected consumers"
+  schedule: 
+    cron: "*/15 * * * *"  # Run every 15 minutes
+  flow_name: monitor_replication_slots
+  entrypoint: replication_slot_monitor:monitor_replication_slots
+  parameters:
+    crunchy_or_snowflake: "snowflake"
+    warning_lag_mb: 100      # Alert at 100 MB lag
+    critical_lag_mb: 500     # Critical at 500 MB lag
+    warning_unconfirmed_mb: 50
+    fail_on_problems: true   # Fail flow on issues (triggers Prefect automation)
+    send_email: false        # Email disabled - using Prefect automation instead
+  work_pool:
+    name: google-vm-docker
+    job_variables:
+      image: "ghcr.io/sfc-gh-jkang/e2e-flow:latest"
+      image_pull_policy: "Always"
+
+- name: replication-slot-monitor-crunchy
+  version: main
+  tags: [monitoring, postgresql, replication, alerts, crunchy]
+  description: "Monitor Crunchy Bridge PostgreSQL replication slots for growing lag or disconnected consumers"
+  schedule: 
+    cron: "*/15 * * * *"  # Run every 15 minutes
+  flow_name: monitor_replication_slots
+  entrypoint: replication_slot_monitor:monitor_replication_slots
+  parameters:
+    crunchy_or_snowflake: "crunchy"
+    warning_lag_mb: 100      # Alert at 100 MB lag
+    critical_lag_mb: 500     # Critical at 500 MB lag
+    warning_unconfirmed_mb: 50
+    fail_on_problems: true   # Fail flow on issues (triggers Prefect automation)
+    send_email: false        # Email disabled - using Prefect automation instead
+  work_pool:
+    name: google-vm-docker
+    job_variables:
+      image: "ghcr.io/sfc-gh-jkang/e2e-flow:latest"
+      image_pull_policy: "Always"
