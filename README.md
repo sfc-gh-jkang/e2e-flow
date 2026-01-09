@@ -91,6 +91,110 @@ uv run python -c "from prefect_test import load_eve_market_data; load_eve_market
 uv run python -c "from prefect_test import load_eve_market_data; load_eve_market_data(crunchy_or_snowflake='snowflake')"
 ```
 
+### Querying EVE Market Data from Snowflake
+
+The EVE Online market data is available in multiple Snowflake databases. Connect to your Snowflake account to query the data.
+
+#### Available Databases
+
+| Database | Purpose | Description |
+|----------|---------|-------------|
+| `EVE_ONLINE` | Raw market data | Main source from ESI API via OpenFlow CDC |
+| `EVE_ONLINE_CRUNCHY` | Crunchy Bridge mirror | Data replicated from Crunchy Bridge PostgreSQL |
+| `EVE_ONLINE_DBT_DB_DEV` | dbt transformations (dev) | Staging and mart views with cleaned data |
+| `EVE_ONLINE_DBT_DB_PROD` | dbt transformations (prod) | Production-ready transformed data |
+
+#### Raw Data Queries
+
+```sql
+-- Check latest data in raw table
+SELECT 
+    COUNT(*) as total_rows,
+    COUNT(DISTINCT REGION_ID) as unique_regions,
+    COUNT(DISTINCT TYPEID) as unique_items,
+    MAX(TIMESTAMP_PULLED) as latest_pull
+FROM EVE_ONLINE.EVE_ONLINE.EVE_MARKET_DATA
+WHERE _SNOWFLAKE_DELETED = FALSE;
+
+-- Get sample of most recent records
+SELECT *
+FROM EVE_ONLINE.EVE_ONLINE.EVE_MARKET_DATA
+ORDER BY TIMESTAMP_PULLED DESC
+LIMIT 10;
+
+-- Daily pull summary
+SELECT 
+    DATE(TIMESTAMP_PULLED) as pull_date,
+    COUNT(*) as records_pulled,
+    COUNT(DISTINCT REGION_NAME) as regions,
+    COUNT(DISTINCT ITEM_NAME) as items
+FROM EVE_ONLINE.EVE_ONLINE.EVE_MARKET_DATA
+WHERE _SNOWFLAKE_DELETED = FALSE
+GROUP BY DATE(TIMESTAMP_PULLED)
+ORDER BY pull_date DESC
+LIMIT 10;
+
+-- Top regions by record count
+SELECT 
+    REGION_NAME,
+    COUNT(*) as record_count,
+    MAX(TIMESTAMP_PULLED) as last_update
+FROM EVE_ONLINE.EVE_ONLINE.EVE_MARKET_DATA
+WHERE _SNOWFLAKE_DELETED = FALSE
+GROUP BY REGION_NAME
+ORDER BY record_count DESC;
+```
+
+#### Transformed Data Queries (dbt)
+
+The dbt models provide cleaned and enriched data with resolved item names.
+
+```sql
+-- Query the mart view with cleaned item names
+SELECT *
+FROM EVE_ONLINE_DBT_DB_DEV.MARTS.EVE_MARKET_WITH_ITEM_NAMES
+ORDER BY LAST_DATA DESC
+LIMIT 10;
+
+-- Get summary of transformed data
+SELECT 
+    COUNT(*) as total_rows,
+    COUNT(DISTINCT ITEM_NAME) as unique_items,
+    MAX(TIMESTAMP_PULLED) as latest_pull,
+    MAX(LAST_DATA) as latest_data_date
+FROM EVE_ONLINE_DBT_DB_DEV.MARTS.EVE_MARKET_WITH_ITEM_NAMES;
+
+-- Lookup item name mappings
+SELECT *
+FROM EVE_ONLINE_DBT_DB_DEV.MARTS.ITEM_NAME_MAP
+ORDER BY TYPEID
+LIMIT 20;
+
+-- Query staging layer (raw with casted timestamps)
+SELECT *
+FROM EVE_ONLINE_DBT_DB_DEV.STAGING.RAW_EVE_MARKET
+WHERE REGION_NAME = 'The Forge'
+ORDER BY LAST_DATA DESC
+LIMIT 10;
+```
+
+#### dbt Model Structure
+
+```
+EVE_ONLINE_DBT_DB_DEV/
+├── STAGING/
+│   └── RAW_EVE_MARKET (view)         # Raw data with casted timestamps/dates
+└── MARTS/
+    ├── ITEM_NAME_MAP (view)          # TypeID → Item Name mapping
+    └── EVE_MARKET_WITH_ITEM_NAMES (view)  # Cleaned market data with resolved names
+```
+
+**Key Transformations:**
+- Timestamps are properly cast from strings
+- "Unknown" item names are resolved via the `ITEM_NAME_MAP`
+- Deleted rows (`_SNOWFLAKE_DELETED = TRUE`) are filtered out
+- Data is ordered by `LAST_DATA DESC, REGION_ID ASC, TYPEID ASC`
+
 ### Testing Database Connections
 
 ```bash
