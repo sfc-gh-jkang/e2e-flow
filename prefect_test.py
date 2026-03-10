@@ -92,6 +92,8 @@ def load_eve_market_data(
     # Step 1: Pull data (or use provided CSV)
     if csv_file is None:
         csv_file = pull_market_data()
+        if csv_file is None:
+            raise RuntimeError("Market data pull returned no CSV file — API may be down or returned no data")
     else:
         print(f"Using existing CSV file: {csv_file}")
     
