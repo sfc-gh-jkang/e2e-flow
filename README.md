@@ -835,3 +835,10 @@ snow sql -q "SHOW IMAGES IN IMAGE REPOSITORY E2E_FLOW_DB.IMAGE_SCHEMA.IMAGE_REPO
 **🎉 You now have a Prefect worker running!** The worker connects to Prefect Cloud and executes your flow runs.
 
 **Current active setup:** Google VM with Docker-based ETL flows loading EVE Online market data to Crunchy Bridge and Snowflake PostgreSQL databases.
+
+## Repository Owner
+
+- **Owner:** John Kang (john.kang@snowflake.com / [@sfc-gh-jkang](https://github.com/sfc-gh-jkang))
+- **Access requests:** Open a [CASEC Jira](https://snowflakecomputing.atlassian.net/) for access changes
+- **License:** Apache-2.0
+
